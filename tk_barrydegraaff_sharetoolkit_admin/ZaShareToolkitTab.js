@@ -48,10 +48,18 @@ ZaShareToolkitTab = function(parent, entry) {
     '<br><hr>' +
     '<h2>Generate persona\'s</h2>This option allows you to generate a persona for each alias in the users account. <br><br><input type="text" id="ShareToolkit-account-c" list="ShareToolkit-datalist" placeholder="user@domain.com">&nbsp;&nbsp;<button id="ShareToolkit-btnPersonaGen">OK</button>' +
     '<br><br><hr>' +
-    '<h2>Status</h2><div id="ShareToolkit-status" style="color:#aaaaaa; font-style: italic;"></div></div>';   
+    '<h2>Status</h2><div id="ShareToolkit-status" style="color:#aaaaaa; font-style: italic;"></div>' +
+    '<br><br><hr>' +
+    '<h2>Shared</h2><span id="status_shared" style="color:#aaaaaa; font-style: italic;"></span><br><button id="ShareToolkit-btnGetShareds">Get Shareds</button><div id="shared" style="color:#aaaaaa; font-style: italic;"></div>' +
+    '</div>';   
     
     ZaShareToolkitTab.prototype.status('Loading auto completion...');
-    
+
+    ZaShareToolkitTab.prototype.getShareds();
+   
+    var btnGetShareds = document.getElementById('ShareToolkit-btnGetShareds');
+    btnGetShareds.onclick = AjxCallback.simpleClosure(this.getShareds);
+ 
     var btnCreateShare = document.getElementById('ShareToolkit-btnCreateShare');
     btnCreateShare.onclick = AjxCallback.simpleClosure(this.btnCreateRemoveShare);
     
@@ -147,11 +155,77 @@ ZaShareToolkitTab.prototype.btnPersonaGen = function () {
     {
        ZaShareToolkitTab.prototype.status('Select or type email address.');
     }
-}   
+} 
+
+ZaShareToolkitTab.prototype.removeShare = function (accountA, accountB, permissions) {
+   ZaShareToolkitTab.prototype.status('Removing share...');
+
+   var skipPersonaCreation = document.getElementById('ShareToolkit-disablePersonaCreation').checked;
+   if (accountA && accountB && (accountA !== accountB)) {
+      var soapDoc = AjxSoapDoc.create("ShareToolkit", "urn:ShareToolkit", null);
+      soapDoc.getMethod().setAttribute("action", "removeShare");
+      soapDoc.getMethod().setAttribute("accounta", accountA);
+      soapDoc.getMethod().setAttribute("accountb", accountB);
+      soapDoc.getMethod().setAttribute("skipPersonaCreation", skipPersonaCreation);
+      soapDoc.getMethod().setAttribute("permissions", permissions);
+      var csfeParams = new Object();
+      csfeParams.soapDoc = soapDoc;
+      csfeParams.asyncMode = true;
+      csfeParams.callback = new AjxCallback(ZaShareToolkitTab.prototype.shareToolkitDefaultCallback);
+      var reqMgrParams = {};
+      resp = ZaRequestMgr.invoke(csfeParams, reqMgrParams);
+   }
+   else {
+      ZaShareToolkitTab.prototype.status('Select or type 2 different email addresses.');
+   }
+}
+
+ZaShareToolkitTab.prototype.getSharedsCallback = function (result) {
+   var shareds = result._data.Body.ShareToolkitResponse.shareToolkitResult._content.split(";");
+   var txtShareds = shareds[0].split("#").join("")
+   var jshareds = JSON.parse(txtShareds);
+   var outPut = "<div style='margin-top:15px'>"
+   var index = 0;
+   jshareds.forEach(function(principal){
+      outPut = outPut + "<div style='display: flex; width: 500px; justify-content: space-between; margin-bottom: 15px;'><div>" + principal.email + "</div>";
+      outPut = outPut + "<div>";
+      principal.shared.forEach(function (secundario){
+         outPut = outPut + "<div style='display: flex; width: 270px; justify-content: space-between;'>" + secundario.email + "<button id='del-" + index + "' style='margin-left: 5px;'>Del</button></div>";
+         index = index + 1;
+      })
+      outPut = outPut + "</div></div><hr style='width:100%'></hr>";
+   })
+   outPut = outPut + "</div>";
+   document.getElementById('shared').innerHTML = outPut;
+   index = 0;
+   btnDel = [];
+   jshareds.forEach(function(principal){
+      principal.shared.forEach(function (secundario){
+         btnDel[index] = document.getElementById('del-' + index);
+         btnDel[index].addEventListener('click', function() { AjxCallback.simpleClosure(ZaShareToolkitTab.prototype.removeShare(principal.email, secundario.email, secundario.permissao)); } );
+         index = index + 1;
+      })
+   })
+
+   document.getElementById('status_shared').innerHTML = "Ready.";
+   return;
+}
+
+ZaShareToolkitTab.prototype.getShareds = function () {
+   document.getElementById('status_shared').innerHTML = "Getting shareds... ";
+   var soapDoc = AjxSoapDoc.create("ShareToolkit", "urn:ShareToolkit", null);
+   soapDoc.getMethod().setAttribute("action", "getShareds");
+   var csfeParams = new Object();
+   csfeParams.soapDoc = soapDoc;
+   csfeParams.asyncMode = true;
+   csfeParams.callback = new AjxCallback(ZaShareToolkitTab.prototype.getSharedsCallback);
+   var reqMgrParams = {};
+   resp = ZaRequestMgr.invoke(csfeParams, reqMgrParams);
+}
   
-   
 ZaShareToolkitTab.prototype.shareToolkitDefaultCallback = function (result) {
    ZaShareToolkitTab.prototype.status('Ready. '+result._data.Body.ShareToolkitResponse.shareToolkitResult._content);
+   ZaShareToolkitTab.prototype.getShareds();
 }  
 
 ZaShareToolkitTab.prototype.status = function (statusText) {

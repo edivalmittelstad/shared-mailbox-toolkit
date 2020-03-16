@@ -45,6 +45,9 @@ public class ShareToolkitSoapHandler extends DocumentHandler {
                 case "getAccounts":
                     shareToolkitResult.setText(this.runCommand("/usr/local/sbin/acctalias", "", "", "", ""));
                     break;
+                case "getShareds":
+                    shareToolkitResult.setText(this.runCommand("/usr/local/sbin/shareds", "", "", "", ""));
+                    break;
                 case "createShare":
                 case "removeShare":
                     if ((this.validate(request.getAttribute("accountb"))) && (this.validate(request.getAttribute("accounta")))) {
